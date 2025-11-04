@@ -3,16 +3,16 @@ const EKEY = "ebeco_demo_state_v1";
 
 // ===== Planes disponibles =====
 const EBECO_PLANS = {
-  basico:   { key: "basico",   name: "Básico",   price: 25 },
+  basico: { key: "basico", name: "Básico", price: 25 },
   estandar: { key: "estandar", name: "Estándar", price: 35 },
-  premium:  { key: "premium",  name: "Premium",  price: 45 },
+  premium: { key: "premium", name: "Premium", price: 45 },
 };
 
 // ---------- helpers de estado ----------
 function ensureSchema(s) {
   if (!s.auth) s.auth = { currentUserId: null, users: [] };
   // Normaliza cada usuario para que tenga plan/suscripción/fechas
-  s.auth.users = (s.auth.users || []).map(u => ({
+  s.auth.users = (s.auth.users || []).map((u) => ({
     plan: null,
     subscriptionActive: false,
     createdAt: u.createdAt || new Date().toISOString(),
@@ -38,8 +38,8 @@ function setState(s) {
 // ejecuta una mutación atómica sobre el mismo objeto 's'
 function withState(mutator) {
   const s = ensureSchema(getState());
-  mutator(s);           // muta s en memoria
-  setState(s);          // guarda el mismo s
+  mutator(s); // muta s en memoria
+  setState(s); // guarda el mismo s
   return s;
 }
 
@@ -52,30 +52,40 @@ function isAuthed() {
 function getCurrentUser() {
   const s = getState();
   if (!s.auth?.currentUserId) return null;
-  return s.auth.users.find(u => u.id === s.auth.currentUserId) || null;
+  return s.auth.users.find((u) => u.id === s.auth.currentUserId) || null;
 }
 
 // ---------- normalizadores ----------
-function normEmail(email) { return (email || "").trim().toLowerCase(); }
-function normName(name) { return (name || "").trim(); }
-function normPass(pw) { return (pw || "").trim(); }
+function normEmail(email) {
+  return (email || "").trim().toLowerCase();
+}
+function normName(name) {
+  return (name || "").trim();
+}
+function normPass(pw) {
+  return (pw || "").trim();
+}
 
 // ---------- acciones: auth ----------
 function registerUser({ name, email, password, plan = null }) {
   name = normName(name);
   email = normEmail(email);
   password = normPass(password);
-  if (!name || !email || !password) throw new Error("Completa todos los campos.");
+  if (!name || !email || !password)
+    throw new Error("Completa todos los campos.");
 
-  withState(s => {
-    const exists = s.auth.users.some(u => u.email === email);
+  withState((s) => {
+    const exists = s.auth.users.some((u) => u.email === email);
     if (exists) throw new Error("Ya existe una cuenta con ese correo.");
     const id = crypto.randomUUID?.() || String(Date.now());
 
     s.auth.users.push({
-      id, name, email, password,             // demo: sin hash
-      plan: plan || null,                    // "basico" | "estandar" | "premium" | null
-      subscriptionActive: false,             // se activa tras pago
+      id,
+      name,
+      email,
+      password, // demo: sin hash
+      plan: plan || null, // "basico" | "estandar" | "premium" | null
+      subscriptionActive: false, // se activa tras pago
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -83,6 +93,8 @@ function registerUser({ name, email, password, plan = null }) {
     s.auth.currentUserId = id; // inicia sesión
   });
 
+  // si se registró, ya no es invitado
+  localStorage.removeItem("ebeco-guest");
   return true;
 }
 
@@ -91,33 +103,43 @@ function loginUser(email, password) {
   password = normPass(password);
 
   let ok = false;
-  withState(s => {
-    const user = s.auth.users.find(u => u.email === email && u.password === password);
+  withState((s) => {
+    const user = s.auth.users.find(
+      (u) => u.email === email && u.password === password
+    );
     if (!user) return; // no tocar estado si no coincide
     s.auth.currentUserId = user.id;
     ok = true;
   });
 
   if (!ok) throw new Error("Credenciales incorrectas.");
+
+  // si inició sesión, ya no es invitado
+  localStorage.removeItem("ebeco-guest");
   return true;
 }
 
 function logoutUser() {
-  withState(s => { s.auth.currentUserId = null; });
+  withState((s) => {
+    s.auth.currentUserId = null;
+  });
 }
 
+// Redirige si no hay sesión
 function requireAuth(redirectIfNot = "login.html") {
   if (!isAuthed()) location.href = redirectIfNot;
 }
 
 // ---------- acciones: planes / suscripción ----------
-function getPlans() { return EBECO_PLANS; }
+function getPlans() {
+  return EBECO_PLANS;
+}
 
 function setPlan(planKey) {
   if (!EBECO_PLANS[planKey]) throw new Error("Plan inválido.");
-  withState(s => {
+  withState((s) => {
     const id = s.auth.currentUserId;
-    const idx = s.auth.users.findIndex(u => u.id === id);
+    const idx = s.auth.users.findIndex((u) => u.id === id);
     if (idx === -1) throw new Error("NO_SESSION");
     const u = s.auth.users[idx];
     s.auth.users[idx] = {
@@ -131,9 +153,9 @@ function setPlan(planKey) {
 }
 
 function markPaymentOk() {
-  withState(s => {
+  withState((s) => {
     const id = s.auth.currentUserId;
-    const idx = s.auth.users.findIndex(u => u.id === id);
+    const idx = s.auth.users.findIndex((u) => u.id === id);
     if (idx === -1) throw new Error("NO_SESSION");
     const u = s.auth.users[idx];
     s.auth.users[idx] = {
@@ -159,10 +181,64 @@ function getCurrentPlanInfo() {
 // ---------- expone la API ----------
 window.EBECO = {
   // auth
-  isAuthed, getCurrentUser, registerUser, loginUser, logoutUser, requireAuth,
+  isAuthed,
+  getCurrentUser,
+  registerUser,
+  loginUser,
+  logoutUser,
+  requireAuth,
   // planes
-  getPlans, setPlan, markPaymentOk, hasActiveSubscription, getCurrentPlanInfo,
+  getPlans,
+  setPlan,
+  markPaymentOk,
+  hasActiveSubscription,
+  getCurrentPlanInfo,
 };
+
+// --- Migración y limpieza de estado legado ---
+(function migrateLegacyAndClean() {
+  try {
+    const s = getState();
+    const hasNewSession = !!s.auth?.currentUserId;
+
+    if (hasNewSession) {
+      // Si ya hay sesión nueva, limpiar modo invitado
+      localStorage.removeItem("ebeco-guest");
+    } else {
+      // Intento de migración desde claves antiguas (si existían)
+      const legacyAuthed = localStorage.getItem("isAuthed") === "true";
+      const legacyUser = JSON.parse(localStorage.getItem("user") || "null");
+
+      if (legacyAuthed && legacyUser?.email) {
+        withState((st) => {
+          const email = (legacyUser.email || "").toLowerCase();
+          let u = st.auth.users.find((x) => x.email === email);
+          if (!u) {
+            u = {
+              id: crypto.randomUUID?.() || String(Date.now()),
+              name: legacyUser.name || "Usuario",
+              email,
+              password: legacyUser.password || "", // demo
+              plan: null,
+              subscriptionActive: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            st.auth.users.push(u);
+          }
+          st.auth.currentUserId = u.id;
+        });
+      }
+    }
+
+    // Limpia siempre las claves legadas para evitar conflictos
+    localStorage.removeItem("isAuthed");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userId");
+  } catch (e) {
+    console.warn("[EBECO] migración/limpieza falló:", e);
+  }
+})();
 
 // === Mostrar el nombre (y opcionalmente el plan) en todas las pantallas ===
 document.addEventListener("DOMContentLoaded", () => {

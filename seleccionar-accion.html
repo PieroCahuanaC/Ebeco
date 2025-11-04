@@ -100,6 +100,9 @@
       </section>
     </main>
 
+    <!-- Carga la API de auth/estado ANTES del script inline -->
+    <script src="app.js"></script>
+
     <script>
       let port, reader, writer;
 
@@ -187,16 +190,25 @@
         const subEst = document.getElementById("subEstacionar");
         if (!el || !linkEst || !subEst) return;
 
-        const isAuthed = window.EBECO?.isAuthed && window.EBECO.isAuthed();
+        const hasApi = !!(
+          window.EBECO && typeof window.EBECO.isAuthed === "function"
+        );
+        const isAuthed = hasApi && window.EBECO.isAuthed();
+
+        // ✅ Si hay sesión, limpia el flag de invitado para evitar confusión
+        if (isAuthed && localStorage.getItem("ebeco-guest") === "1") {
+          localStorage.removeItem("ebeco-guest");
+        }
+
         if (isAuthed) {
-          const user = window.EBECO?.getCurrentUser?.() || {};
+          const user = window.EBECO.getCurrentUser?.() || {};
           const name = user.name || user.displayName || "Usuario";
           el.textContent = `Bienvenido ${name}`;
           el.style.display = "block";
           // Usuario logueado: estacionar con reconocimiento facial
           linkEst.href = "verify-facial.html";
           subEst.textContent = "Validación facial y registro del slot";
-          // Mostrar opciones avanzadas
+          // Mostrar opciones de cuenta
           if (linkHist) linkHist.style.display = "";
           if (linkLiberar) linkLiberar.style.display = "";
           return;
@@ -216,7 +228,7 @@
           return;
         }
 
-        // Fallback (sin estado claro): dejar todo visible y usar facial
+        // Fallback (sin estado claro): dejar visible y usar facial
         linkEst.href = "verify-facial.html";
         subEst.textContent = "Bloquea y registra tu bici en un slot";
         if (linkHist) linkHist.style.display = "";
