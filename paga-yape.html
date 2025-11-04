@@ -17,6 +17,7 @@
         flex-direction: column;
         min-height: 100vh;
       }
+
       .topbar {
         display: flex;
         align-items: center;
@@ -26,6 +27,7 @@
         color: #fff;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
       }
+
       .topbar__title {
         flex: 1;
         text-align: center;
@@ -33,6 +35,7 @@
         font-size: 1.2rem;
         color: #fff;
       }
+
       .btn--ghost {
         background: none;
         border: none;
@@ -40,12 +43,14 @@
         color: #fff;
         cursor: pointer;
       }
+
       .brand__logo {
         width: 40px;
         height: 40px;
         object-fit: contain;
         border-radius: 50%;
       }
+
       main.screen {
         flex: 1;
         display: flex;
@@ -53,6 +58,7 @@
         align-items: flex-start;
         padding: 2rem 1rem;
       }
+
       .card {
         background: white;
         border-radius: 1rem;
@@ -61,11 +67,13 @@
         text-align: center;
         padding: 1.5rem;
       }
+
       h2 {
         color: #166534;
         font-size: 1.4rem;
         margin-bottom: 0.75rem;
       }
+
       img.qr {
         width: 240px;
         height: 240px;
@@ -73,12 +81,14 @@
         border-radius: 0.75rem;
         margin: 1rem 0;
       }
+
       .amount {
         font-size: 1.8rem;
         font-weight: 700;
         color: #065f46;
         margin-bottom: 1.2rem;
       }
+
       .btn {
         display: block;
         width: 100%;
@@ -92,22 +102,21 @@
         transition: background 0.2s;
         margin-bottom: 0.5rem;
       }
+
       .btn--primary {
         background-color: #16a34a;
       }
+
       .btn--primary:hover {
         background-color: #15803d;
       }
+
       .btn--danger {
         background-color: #dc2626;
       }
+
       .btn--danger:hover {
         background-color: #b91c1c;
-      }
-      #serialStatus {
-        font-size: 0.9rem;
-        color: #64748b;
-        margin-top: 0.5rem;
       }
     </style>
   </head>
@@ -131,73 +140,15 @@
       <div class="card">
         <h2>Pago con Yape</h2>
         <img src="assets/yape-pago.jpeg" alt="QR Yape - EBECO" class="qr" />
-        <div class="amount" id="amountLabel">S/. 3.00</div>
-
+        <div class="amount">S/. 3.00</div>
         <button class="btn btn--primary" id="btnSimular">
           Simular pago Yape
         </button>
         <button class="btn btn--danger" onclick="history.back()">
           Cancelar
         </button>
-
-        <!-- 👇 Antes no existía; lo usa setStatus -->
-        <div id="serialStatus">Preparando sistema…</div>
       </div>
     </main>
-
-    <!-- Utilitario de historial -->
-    <script>
-      window.EBECO = window.EBECO || {};
-      (function () {
-        const KEY = "ebeco-history";
-        function load() {
-          try {
-            return JSON.parse(localStorage.getItem(KEY) || "[]");
-          } catch {
-            return [];
-          }
-        }
-        function save(list) {
-          localStorage.setItem(KEY, JSON.stringify(list));
-        }
-        function add({
-          type,
-          place,
-          at = new Date().toISOString(),
-          amount = null,
-        }) {
-          const list = load();
-          list.unshift({
-            id: crypto?.randomUUID
-              ? crypto.randomUUID()
-              : Date.now() + "-" + Math.random(),
-            type,
-            place: place || "Sede desconocida",
-            at,
-            amount,
-          });
-          save(list.slice(0, 200));
-        }
-        function get() {
-          return load();
-        }
-        function clear() {
-          save([]);
-        }
-        EBECO.History = { add, get, clear };
-      })();
-      function getPlaceContext() {
-        const p = new URLSearchParams(location.search);
-        if (p.get("place")) return p.get("place");
-        const c = localStorage.getItem("ebeco-place");
-        return c || "Módulo A — UCSM";
-      }
-      function getAmountNumber() {
-        const raw = document.getElementById("amountLabel")?.textContent || "0";
-        const num = parseFloat(raw.replace(/[^\d.,-]/g, "").replace(",", "."));
-        return isNaN(num) ? 0 : num;
-      }
-    </script>
 
     <script>
       // ==========================
@@ -209,14 +160,12 @@
         textDecoder = null;
       let openPromise = null; // 🔒 evita open() concurrentes
       let navTimer = null; // fallback de navegación
-      let isConnected = false;
-      let loggedRelease = false; // 👈 evita doble registro
+      let isConnected = false; // Asegura que solo intentemos enviar un comando cuando estemos conectados.
 
       const statusEl = document.getElementById("serialStatus");
       const btnSimular = document.getElementById("btnSimular");
 
       function setStatus(t, tone = "muted") {
-        if (!statusEl) return; // por seguridad
         statusEl.textContent = t;
         statusEl.style.color =
           tone === "ok" ? "#16a34a" : tone === "err" ? "#b91c1c" : "#64748b";
@@ -228,6 +177,8 @@
           setStatus("Web Serial no disponible (usa Chrome/Edge).", "err");
           return false;
         }
+
+        // Si ya hay una apertura en curso, espera esa misma promesa
         if (openPromise) {
           try {
             await openPromise;
@@ -258,7 +209,8 @@
             const needsOpen = !(port.readable && port.writable);
             if (needsOpen) {
               await port.open({ baudRate: 115200 });
-              await new Promise((r) => setTimeout(r, 1200)); // warmup
+              await new Promise((r) => setTimeout(r, 1200)); // warmup del UNO
+
               writer = port.writable.getWriter();
               textDecoder = new TextDecoder();
               reader = port.readable.getReader();
@@ -303,33 +255,19 @@
             const line = raw.trim();
             if (!line) continue;
 
-            console.log("Recibido desde Arduino:", line);
+            console.log("Recibido desde Arduino:", line); // Log para ver la respuesta
 
-            // Si la respuesta es OPEN, redirige y REGISTRA (una sola vez)
+            // Si la respuesta es OPEN, redirige
             if (/OPEN/i.test(line)) {
               setStatus("Candado abierto (verde).", "ok");
-
-              if (!loggedRelease) {
-                try {
-                  EBECO.History.add({
-                    type: "liberar",
-                    place: getPlaceContext(),
-                    amount: getAmountNumber(),
-                  });
-                  loggedRelease = true;
-                } catch (e) {
-                  console.warn(
-                    "No se pudo registrar el historial (liberar: OPEN):",
-                    e
-                  );
-                }
-              }
-
               if (navTimer) {
                 clearTimeout(navTimer);
                 navTimer = null;
               }
+
+              // Redirigir después de recibir OPEN, pero también redirigir inmediatamente al hacer clic
               setTimeout(() => {
+                console.log("Redirigiendo a bicicleta-desbloqueada.html");
                 window.location.href = "bicicleta-desbloqueada.html";
               }, 300);
             }
@@ -348,44 +286,26 @@
         console.log("[EBECO] >", s);
       }
 
-      // === Simulación de pago con Yape ===
+      // Función para simular el pago
       btnSimular.addEventListener("click", async () => {
         alert(
-          "✅ Pago Yape simulado correctamente.\nGracias por su pago de " +
-            document.getElementById("amountLabel").textContent +
-            "."
+          "✅ Pago Yape simulado correctamente.\nGracias por su pago de S/. 3.00."
         );
 
-        // 1) Registrar la liberación de inmediato (sin esperar Arduino)
-        if (!loggedRelease) {
-          try {
-            EBECO.History.add({
-              type: "liberar",
-              place: getPlaceContext(),
-              amount: getAmountNumber(),
-            });
-            loggedRelease = true;
-          } catch (e) {
-            console.warn(
-              "No se pudo registrar historial (simulación Yape):",
-              e
-            );
-          }
-        }
-
-        // 2) Redirigir ya (experiencia rápida)
+        // Redirigir inmediatamente sin esperar la respuesta del Arduino
         window.location.href = "bicicleta-desbloqueada.html";
 
-        // 3) (Opcional) intentar mandar OPEN al Arduino si está disponible
+        // Conectar al dispositivo serial
         const ok = await ensureConnected();
         if (!ok || !isConnected) {
-          setStatus("No se pudo conectar. (Simulación completada)", "muted");
+          setStatus("No se pudo conectar. Usa “Conectar dispositivo”.", "err");
           return;
         }
 
+        // Enviar comando para abrir el candado (simular desbloqueo)
         setStatus("🔓 Abriendo seguro...");
         try {
-          await sendLine("o");
+          await sendLine("o"); // Comando para abrir el candado
         } catch {
           setStatus(
             "No se pudo enviar el comando. Cierra el Monitor Serial del IDE.",
@@ -394,7 +314,7 @@
           return;
         }
 
-        // Fallback por si no llega OPEN (no afecta porque ya redirigimos)
+        // Si no llega respuesta dentro de 1.5 segundos, redirige
         if (navTimer) clearTimeout(navTimer);
         navTimer = setTimeout(() => {
           console.warn("[EBECO] Fallback: navegar sin ACK OPEN");
