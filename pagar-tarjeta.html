@@ -94,7 +94,7 @@
               id="total-amount"
               name="total-amount"
               class="input"
-              value="S/. 3.00"
+              value="S/. 0.00"
               readonly
             />
           </div>
@@ -131,7 +131,10 @@
       </section>
     </main>
 
-    <!-- Utilitario de historial (puedes moverlo a history.js si quieres) -->
+    <!-- Cargar app.js para tener planes y usuario actual -->
+    <script src="app.js"></script>
+
+    <!-- Utilitario de historial -->
     <script>
       window.EBECO = window.EBECO || {};
       (function () {
@@ -185,6 +188,24 @@
 
     <script>
       // ==========================
+      // Precio según plan
+      // ==========================
+      const amountInput = document.getElementById("total-amount");
+
+      (function setupAmountByPlan() {
+        // Lee info del plan actual desde app.js
+        const planInfo = window.EBECO?.getCurrentPlanInfo?.();
+        let amount = 3.0; // fallback por si no hay plan
+
+        if (planInfo && typeof planInfo.price === "number") {
+          // price viene de EBECO_PLANS (25, 35, 45)
+          amount = planInfo.price;
+        }
+
+        amountInput.value = `S/. ${amount.toFixed(2)}`;
+      })();
+
+      // ==========================
       // Web Serial robusto
       // ==========================
       let port = null,
@@ -207,7 +228,7 @@
       }
 
       function getAmountNumber() {
-        // Lee del input readonly "total-amount" (ej. "S/. 3.00")
+        // Lee del input readonly "total-amount" (ej. "S/. 25.00")
         const raw = document.getElementById("total-amount")?.value || "0";
         // Deja solo dígitos, coma o punto; cambia coma por punto y parsea
         const num = parseFloat(raw.replace(/[^\d.,-]/g, "").replace(",", "."));
@@ -233,7 +254,7 @@
             if (/OPEN/i.test(line)) {
               setStatus("Candado abierto (verde).", "ok");
 
-              // >>>>>>>>>>> AÑADIR: registrar LIBERAR con precio <<<<<<<<<<
+              // Registrar LIBERAR con el monto del plan
               if (!loggedRelease) {
                 try {
                   window.EBECO?.History?.add({
@@ -241,6 +262,8 @@
                     place: getPlaceContext(),
                     amount: getAmountNumber(),
                   });
+                  // marcar suscripción pagada
+                  window.EBECO?.markPaymentOk?.();
                   loggedRelease = true;
                 } catch (e) {
                   console.warn(
@@ -249,14 +272,13 @@
                   );
                 }
               }
-              // >>>>>>>>>>> FIN AÑADIR <<<<<<<<<<
 
               if (navTimer) {
                 clearTimeout(navTimer);
                 navTimer = null;
               }
               setTimeout(() => {
-                window.location.href = "bicicleta-desbloqueada.html";
+                window.location.href = "seleccionar-accion.html";
               }, 300);
             }
             if (/CLOSE/i.test(line)) {
@@ -358,7 +380,7 @@
             port = null;
             return false;
           } finally {
-            // libera el candado (defer para evitar carrera inmediata)
+            // libera el candado
             setTimeout(() => {
               openPromise = null;
             }, 0);
@@ -421,9 +443,11 @@
         window.EBECO?.History?.add({
           type: "liberar",
           place: getPlaceContext(),
-          amount: 3.0,
+          amount: getAmountNumber(), // <- usa el precio del plan
         });
-        window.location.href = "bicicleta-desbloqueada.html";
+        // marcar suscripción como activa al pagar
+        window.EBECO?.markPaymentOk?.();
+        window.location.href = "seleccionar-accion.html";
         return;
         // ------------ FIN DE PRUEBA SIN ARDUINO ------------ //
 
@@ -457,7 +481,7 @@
         if (navTimer) clearTimeout(navTimer);
         navTimer = setTimeout(() => {
           console.warn("[EBECO] Fallback: navegar sin ACK OPEN");
-          window.location.href = "bicicleta-desbloqueada.html";
+          window.location.href = "seleccionar-accion.html";
         }, 1500);
 
         // Rehabilitar por si no navega (si navega no importa)

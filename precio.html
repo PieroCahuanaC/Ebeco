@@ -22,6 +22,7 @@
         cursor: not-allowed;
       }
     </style>
+    <script src="app.js"></script>
   </head>
   <body class="app">
     <main class="screen">
@@ -63,11 +64,15 @@
             Estacionamiento por 1 hora
           </div>
 
-          <h3 style="font-size: 2.5rem; font-weight: 700; margin: 1rem 0">
+          <h3
+            id="priceValue"
+            style="font-size: 2.5rem; font-weight: 700; margin: 1rem 0"
+          >
             S/. 3.00
           </h3>
 
           <p class="u-muted">Hora actual: <span id="current-time"></span></p>
+
           <p id="card-note" class="u-muted">
             Confirmación del estacionamiento de la bicicleta.
           </p>
@@ -208,6 +213,26 @@
         );
       }
 
+      // ====== Plan del usuario y precio por hora ======
+      const user = window.EBECO?.getCurrentUser?.();
+      const planInfo = window.EBECO?.getCurrentPlanInfo?.(); // { key, name, price } o null
+      const priceEl = document.getElementById("priceValue");
+      // noteEl ya está declarado arriba
+
+      // Por defecto: cobrar por hora
+      let hourlyPrice = 3.0;
+
+      // Si quieres que cualquier plan (básico/estándar/premium) tenga estacionamiento incluido:
+      if (user && planInfo) {
+        hourlyPrice = 0;
+        priceEl.textContent = "S/. 0.00";
+        noteEl.textContent = `Tu plan ${planInfo.name} cubre el estacionamiento. No se cobrará por hora.`;
+      } else {
+        hourlyPrice = 3.0;
+        priceEl.textContent = "S/. 3.00";
+        noteEl.textContent = "Se cobrará S/. 3.00 por hora al estacionar.";
+      }
+
       // Conectar explícitamente (abre el selector de puerto)
       btnConnect.addEventListener("click", async () => {
         try {
@@ -229,6 +254,7 @@
           window.EBECO?.History?.add({
             type: "estacionar",
             place: getPlaceContext(),
+            amount: hourlyPrice, // 0 si tiene plan, 3 si no
           });
           window.location.href = nextHref;
           return;
@@ -341,12 +367,11 @@
               setNote("Candado cerrado (rojo).");
               setStatus("Candado cerrado ✓", "ok");
 
-              // >>>>>>>>>>> AÑADIR: registrar ESTACIONAR sin precio <<<<<<<<<<
               try {
                 window.EBECO?.History?.add({
                   type: "estacionar",
                   place: getPlaceContext(),
-                  // sin amount
+                  amount: hourlyPrice, // 0 con plan, 3 sin plan
                 });
               } catch (e) {
                 console.warn(
@@ -354,7 +379,6 @@
                   e
                 );
               }
-              // >>>>>>>>>>> FIN AÑADIR <<<<<<<<<<
 
               if (navTimer) {
                 clearTimeout(navTimer);

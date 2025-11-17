@@ -70,7 +70,7 @@
         const password = document.getElementById("password").value;
         try {
           EBECO.loginUser(email, password);
-          location.href = "seleccionar-accion.html";
+          location.href = "metodo-pago.html";
         } catch (err) {
           alert(err.message || "No se pudo iniciar sesión.");
         }

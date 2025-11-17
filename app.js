@@ -24,7 +24,7 @@ function ensureSchema(s) {
 
 function getState() {
   try {
-    const raw = JSON.parse(localStorage.getItem(EKEY)) ?? {};
+    const raw = JSON.parse(localStorage.getItem(EKEY) || "{}");
     return ensureSchema(raw);
   } catch {
     return ensureSchema({});
@@ -85,7 +85,7 @@ function registerUser({ name, email, password, plan = null }) {
       email,
       password, // demo: sin hash
       plan: plan || null, // "basico" | "estandar" | "premium" | null
-      subscriptionActive: false, // se activa tras pago
+      subscriptionActive: !!plan, // si se registra con plan, ya lo activamos
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -135,6 +135,7 @@ function getPlans() {
   return EBECO_PLANS;
 }
 
+// ⚠️ AQUÍ activamos la suscripción cuando se elige plan
 function setPlan(planKey) {
   if (!EBECO_PLANS[planKey]) throw new Error("Plan inválido.");
   withState((s) => {
@@ -145,13 +146,14 @@ function setPlan(planKey) {
     s.auth.users[idx] = {
       ...u,
       plan: planKey,
-      subscriptionActive: false, // requerirá pago nuevamente
+      subscriptionActive: true, // 🔥 ACTIVAMOS AQUI
       updatedAt: new Date().toISOString(),
     };
   });
   return true;
 }
 
+// Si algún día quisieras un flujo de pago separado, puedes seguir usando esto:
 function markPaymentOk() {
   withState((s) => {
     const id = s.auth.currentUserId;
