@@ -40,23 +40,7 @@
       <section class="card u-grid stack-top" aria-labelledby="payment-title">
         <h2 id="payment-title">Seleccionar método de pago</h2>
 
-        <!-- Opción Yape -->
-        <div class="payment-option">
-          <div class="payment-option__icon">
-            <img src="assets/yape.png" alt="Yape logo" class="payment-icon" />
-          </div>
-          <div class="payment-option__info">
-            <div class="u-bold">Pagar con Yape</div>
-            <small class="u-muted"
-              >Escanea el código QR para realizar el pago</small
-            >
-          </div>
-          <button class="btn btn--primary btn--lg" id="yape-btn">
-            Seleccionar Yape
-          </button>
-        </div>
-
-        <!-- Opción Tarjeta -->
+        <!-- Única opción: Tarjeta -->
         <div class="payment-option">
           <div class="payment-option__icon">
             <img
@@ -76,26 +60,18 @@
 
         <!-- Botón de cancelar -->
         <div class="actions">
-          <a class="btn btn--danger btn--lg" href="tiempo-transcurrido.html"
-            >Cancelar</a
-          >
+          <a class="btn btn--danger btn--lg" href="tiempo-transcurrido.html">
+            Cancelar
+          </a>
         </div>
       </section>
     </main>
 
     <script>
-      // Lógica para los botones de pago
-      document
-        .getElementById("yape-btn")
-        .addEventListener("click", function () {
-          // Redirige al QR de pago Yape
-          window.location.href = "paga-yape.html";
-        });
-
+      // Solo redirige a la pantalla de pago con tarjeta
       document
         .getElementById("card-btn")
         .addEventListener("click", function () {
-          // Redirige a la pantalla de pago con tarjeta
           window.location.href = "pagar-tarjeta.html";
         });
     </script>
