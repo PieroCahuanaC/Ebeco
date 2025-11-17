@@ -222,11 +222,13 @@
       // Por defecto: cobrar por hora
       let hourlyPrice = 3.0;
 
-      // Si quieres que cualquier plan (básico/estándar/premium) tenga estacionamiento incluido:
-      if (user && planInfo) {
+      // Si el usuario tiene un plan activo, no mostramos precio, sino el plan
+      if (user && planInfo && window.EBECO?.hasActiveSubscription?.()) {
         hourlyPrice = 0;
-        priceEl.textContent = "S/. 0.00";
-        noteEl.textContent = `Tu plan ${planInfo.name} cubre el estacionamiento. No se cobrará por hora.`;
+        // Mostrar el nombre del plan en grande
+        priceEl.textContent = `Plan ${planInfo.name}`;
+        // Mensaje aclarando que el estacionamiento está incluido
+        noteEl.textContent = `Tu plan ${planInfo.name} cubre el estacionamiento en esta sede.`;
       } else {
         hourlyPrice = 3.0;
         priceEl.textContent = "S/. 3.00";
