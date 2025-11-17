@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Supabase + JS Vanilla</title>
+  </head>
+  <body>
+    <h1>Test Supabase</h1>
+
+    <button id="load">Cargar datos</button>
+    <pre id="output"></pre>
+
+    <script type="module">
+      import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+      const supabase = createClient(
+        "https://tokinwskhmdtktdbxcyf.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRva2lud3NraG1kdGt0ZGJ4Y3lmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNjEyOTEsImV4cCI6MjA3NzgzNzI5MX0.l40EKOx1tv2PM_lMrRRQgdYAhtacjDnRS3KEfsbqzyo"
+      );
+
+      document.querySelector("#load").onclick = async () => {
+        const { data, error } = await supabase.from("test").select("*");
+        document.querySelector("#output").textContent = JSON.stringify(
+          { data, error },
+          null,
+          2
+        );
+      };
+    </script>
+  </body>
+</html>
