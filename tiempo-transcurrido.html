@@ -113,4 +113,62 @@
       updateDisplay(); // Llamada inicial
     </script>
   </body>
+  <script>
+    let port2 = null;
+    let writer2 = null;
+    let isOpening2 = false;
+
+    async function conectarArduino() {
+      if (!("serial" in navigator)) {
+        alert("Tu navegador no soporta Web Serial. Usa Chrome o Edge.");
+        return false;
+      }
+
+      if (isOpening2) return false;
+      isOpening2 = true;
+
+      try {
+        // Solicita puerto si aún no existe
+        if (!port2) {
+          port2 = await navigator.serial.requestPort();
+          await port2.open({ baudRate: 115200 });
+          writer2 = port2.writable.getWriter();
+        }
+        return true;
+      } catch (e) {
+        console.error("Error conectando Arduino:", e);
+        alert("No se pudo conectar con el Arduino.");
+        return false;
+      } finally {
+        isOpening2 = false;
+      }
+    }
+
+    async function enviarUnlock() {
+      try {
+        if (!writer2) return;
+        const data = new TextEncoder().encode("UNLOCK\n");
+        await writer2.write(data);
+        console.log("Comando UNLOCK enviado");
+      } catch (err) {
+        console.error("Error enviando UNLOCK:", err);
+      }
+    }
+
+    // Interceptar click del botón
+    document
+      .querySelector("a[href='bicicleta-desbloqueada.html']")
+      .addEventListener("click", async (e) => {
+        e.preventDefault(); // Detiene navegación inmediata
+
+        const ok = await conectarArduino();
+        if (ok) {
+          await enviarUnlock();
+        }
+
+        setTimeout(() => {
+          window.location.href = "bicicleta-desbloqueada.html";
+        }, 500); // espera breve para que el comando salga
+      });
+  </script>
 </html>

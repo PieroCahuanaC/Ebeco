@@ -23,6 +23,12 @@
       }
     </style>
     <script src="app.js"></script>
+    <script>
+      // Fallback por si app.js no carga
+      if (typeof window.isOpeningPort === "undefined") {
+        window.isOpeningPort = false;
+      }
+    </script>
   </head>
   <body class="app">
     <main class="screen">
@@ -248,25 +254,16 @@
         }
       });
 
-      // Confirmar: si no hay conexión, primero pide puerto; luego envía 'c'
+      // Confirmar: conectar si hace falta y enviar comando PARK
       btnConfirm.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
-          // ------------ INICIO DE PRUEBA SIN ARDUINO ------------ //
-          window.EBECO?.History?.add({
-            type: "estacionar",
-            place: getPlaceContext(),
-            amount: hourlyPrice, // 0 si tiene plan, 3 si no
-          });
-          window.location.href = nextHref;
-          return;
-          // ------------ FIN DE PRUEBA SIN ARDUINO ------------ //
           const ok = await ensureConnected(!connected); // si no conectado, abrir selector
           if (!ok) return;
 
-          setStatus("🔒 Cerrando seguro…");
-          setNote("Cerrando candado…");
-          await sendLine("c");
+          setStatus("🔒 Enviando comando…");
+          setNote("Estacionando bicicleta…");
+          await sendLine("PARK");
 
           if (navTimer) clearTimeout(navTimer);
           navTimer = setTimeout(() => {
@@ -284,6 +281,13 @@
 
       // Garantiza conexión. Si forceDialog=true, abre el chooser (COM5)
       async function ensureConnected(forceDialog = false) {
+        if (window.isOpeningPort) {
+          console.warn(
+            "[EBECO] Ignorando ensureConnected: ya está abriendo el puerto..."
+          );
+          return false;
+        }
+
         if (!("serial" in navigator)) {
           setStatus(
             "Este navegador no soporta Web Serial. Usa Chrome/Edge en https.",
@@ -293,24 +297,21 @@
         }
 
         try {
+          window.isOpeningPort = true;
+
           if (!port) {
             if (forceDialog) {
-              // Abre el diálogo para elegir COM (p.ej., COM5)
               port = await navigator.serial.requestPort();
             } else {
-              // Reusa un puerto previamente concedido (si lo hay)
               const ports = await navigator.serial.getPorts();
               if (ports.length) port = ports[0];
-              else {
-                // no hay permisos previos -> abrir diálogo
-                port = await navigator.serial.requestPort();
-              }
+              else port = await navigator.serial.requestPort();
             }
           }
 
           if (!port.readable || !port.writable) {
             await port.open({ baudRate: 115200 });
-            await new Promise((r) => setTimeout(r, 1200)); // warmup del UNO
+            await new Promise((r) => setTimeout(r, 1200));
             writer = port.writable.getWriter();
             textDecoder = new TextDecoder();
             reader = port.readable.getReader();
@@ -318,32 +319,13 @@
           }
 
           setUiConnected(true);
-
-          // Cierre ordenado
-          window.addEventListener(
-            "beforeunload",
-            async () => {
-              try {
-                await reader?.cancel?.();
-              } catch {}
-              try {
-                reader?.releaseLock?.();
-              } catch {}
-              try {
-                writer?.releaseLock?.();
-              } catch {}
-              try {
-                await port?.close?.();
-              } catch {}
-            },
-            { once: true }
-          );
-
           return true;
         } catch (e) {
           console.error(e);
           setUiConnected(false);
           return false;
+        } finally {
+          window.isOpeningPort = false;
         }
       }
 
